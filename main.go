@@ -5,24 +5,40 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 )
 
-// vamoni init -- creates a .vamoni folder that holds the local config
+const (
+	vamoniDir  = ".vamoni"
+	changeDir  = "change"
+	stageDir   = "stage"
+	permission = 0755
+)
 
-// vamoni detect -- detects changes that were made to the folder and all subfolders
-// --> how to detect that a change is done?
-// file old (saved in .vamoni?) file new. Compare hash, if the same, break
-// if hash not the same, commpare line by line, if the same break
-// if line are not same, print new line
+type Repository struct {
+	basePath string
+}
 
-// vamoni change "creates a new change of the repository"
+func newRepository() *Repository {
+	return &Repository{
+		basePath: vamoniDir,
+	}
+}
 
-// --> every change has a corresponding change directory in .vamoni/change
-// --> cp all files into .vamoni folder (we can later compressu
-// change -> a change is the delta of files before and files after
-// 0 files -> 3 files -- change is the 3 new files
+func (r *Repository) init() {
+	dirs := []string{
+		filepath.Join(r.basePath, changeDir),
+		filepath.Join(r.basePath, stageDir),
+	}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			log.Fatal(err)
+		}
+	}
+	fmt.Println("vamoni folder created")
+}
 
 func vamoniInit() {
 	if err := os.MkdirAll(".vamoni/change", os.ModePerm); err != nil {
@@ -160,6 +176,8 @@ func main() {
 		fmt.Println("No arguments provided")
 		os.Exit(1)
 	}
+
+	repo := newRepository()
 
 	switch os.Args[1] {
 
