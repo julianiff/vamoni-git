@@ -32,23 +32,14 @@ func (r *Repository) init() {
 		filepath.Join(r.basePath, changeDir),
 		filepath.Join(r.basePath, stageDir),
 	}
+
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
 	}
-	fmt.Println("vamoni folder created")
-}
 
-func vamoniInit() {
-	if err := os.MkdirAll(".vamoni/change", os.ModePerm); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := os.MkdirAll(".vamoni/stage", os.ModePerm); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("vamoni folder created")
+	fmt.Println("Initialized the vamoni repository")
 }
 
 func status() {
@@ -182,7 +173,7 @@ func main() {
 	switch os.Args[1] {
 
 	case "init":
-		vamoniInit()
+		repo.init()
 	case "status":
 		status()
 	case "detect":
