@@ -42,30 +42,39 @@ func (r *Repository) init() {
 	fmt.Println("Initialized the vamoni repository")
 }
 
-func status() {
-	detect()
+func (r *Repository) Status() error {
+	changedFiles, err := r.detectChangedFiles()
+	if err != nil {
+		return fmt.Errorf("failed to detect files: %w", err)
+	}
+
 	allStagedFiles := stagedFiles()
-	fmt.Println("these files are staged", allStagedFiles)
+	fmt.Printf("Changed files: %v\n", changedFiles)
+	fmt.Printf("Staged files: %v\n", allStagedFiles)
+
+	return nil
 }
 
-func copyfile(sourceFile string, destinationFile string) {
+func copyfile(sourceFile string, destinationFile string) error {
 
 	source, err := os.Open(sourceFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer source.Close()
 
 	destination, err := os.Create(destinationFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	defer destination.Close()
 	_, err = io.Copy(destination, source)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func diff(workingDir []string, storedDir []string) []string {
@@ -111,20 +120,19 @@ func editedFiles(path string) []string {
 	return diff(changedFiles, filesStoredNames)
 }
 
-func detect() {
-	output := editedFiles(".vamoni/change")
-	fmt.Println("these files are changed", output)
+func (r *Repository) detectChangedFiles() ([]string, error) {
+	output := editedFiles(filepath.Join(r.basePath, changeDir))
+	return output, nil
 }
 
 func stagedFiles() []string {
 	stageFiles, err := os.ReadDir(".vamoni/stage")
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	var allStagedFiles []string
 	for _, s := range stageFiles {
 		allStagedFiles = append(allStagedFiles, s.Name())
 	}
+
 	return allStagedFiles
 }
 
@@ -154,7 +162,10 @@ func change() {
 	}
 
 	for _, f := range allStagedFiles {
-		copyfile(f, ".vamoni/change/"+f)
+		err := copyfile(f, ".vamoni/change/"+f)
+		if err != nil {
+			fmt.Errorf("error while copying")
+		}
 		os.Remove(".vamoni/stage/" + f)
 	}
 
@@ -175,9 +186,9 @@ func main() {
 	case "init":
 		repo.init()
 	case "status":
-		status()
+		repo.Status()
 	case "detect":
-		detect()
+		repo.detectChangedFiles()
 	case "stage":
 		args2 := os.Args[2]
 		stage(args2)
