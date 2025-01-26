@@ -42,6 +42,11 @@ func (r *Repository) init() {
 	fmt.Println("Initialized the vamoni repository")
 }
 
+func (r *Repository) detectChangedFiles() ([]string, error) {
+	output := editedFiles(filepath.Join(r.basePath, changeDir))
+	return output, nil
+}
+
 func (r *Repository) Status() error {
 	changedFiles, err := r.detectChangedFiles()
 	if err != nil {
@@ -51,6 +56,32 @@ func (r *Repository) Status() error {
 	allStagedFiles := stagedFiles()
 	fmt.Printf("Changed files: %v\n", changedFiles)
 	fmt.Printf("Staged files: %v\n", allStagedFiles)
+
+	return nil
+}
+
+func (r *Repository) CommitStagedFiles() error {
+
+	stagePath := filepath.Join(r.basePath, stageDir)
+	stageFiles, err := os.ReadDir(stagePath)
+	if err != nil {
+		return fmt.Errorf("filed to read stagedFiles")
+	}
+	var allStagedFiles []string
+	for _, s := range stageFiles {
+		allStagedFiles = append(allStagedFiles, s.Name())
+	}
+
+	changedPath := filepath.Join(r.basePath, changeDir)
+	for _, f := range allStagedFiles {
+		err := copyfile(f, changedPath+f)
+		if err != nil {
+			return fmt.Errorf("error while copying")
+		}
+		os.Remove(stagePath + f)
+	}
+
+	fmt.Println("New files added to changeset", allStagedFiles)
 
 	return nil
 }
@@ -120,11 +151,6 @@ func editedFiles(path string) []string {
 	return diff(changedFiles, filesStoredNames)
 }
 
-func (r *Repository) detectChangedFiles() ([]string, error) {
-	output := editedFiles(filepath.Join(r.basePath, changeDir))
-	return output, nil
-}
-
 func stagedFiles() []string {
 	stageFiles, err := os.ReadDir(".vamoni/stage")
 	check(err)
@@ -151,27 +177,6 @@ func stage(fileToStage string) {
 	fmt.Println("files that can be staged", allEditedFiles)
 }
 
-func change() {
-	stageFiles, err := os.ReadDir(".vamoni/stage")
-	if err != nil {
-		log.Fatal(err)
-	}
-	var allStagedFiles []string
-	for _, s := range stageFiles {
-		allStagedFiles = append(allStagedFiles, s.Name())
-	}
-
-	for _, f := range allStagedFiles {
-		err := copyfile(f, ".vamoni/change/"+f)
-		if err != nil {
-			fmt.Errorf("error while copying")
-		}
-		os.Remove(".vamoni/stage/" + f)
-	}
-
-	fmt.Println("New files added to changeset", allStagedFiles)
-}
-
 func main() {
 
 	if len(os.Args) < 2 {
@@ -192,8 +197,8 @@ func main() {
 	case "stage":
 		args2 := os.Args[2]
 		stage(args2)
-	case "change":
-		change()
+	case "commit":
+		repo.CommitStagedFiles()
 	default:
 		fmt.Println("No valid method names provided")
 		os.Exit(1)
