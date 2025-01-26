@@ -53,7 +53,11 @@ func (r *Repository) Status() error {
 		return fmt.Errorf("failed to detect files: %w", err)
 	}
 
-	allStagedFiles := stagedFiles()
+	stagedFilePath := filepath.Join(r.basePath, stageDir)
+	allStagedFiles, err := utils.GetFilesInPath(stagedFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to get staged files")
+	}
 	fmt.Printf("Changed files: %v\n", changedFiles)
 	fmt.Printf("Staged files: %v\n", allStagedFiles)
 
@@ -86,23 +90,6 @@ func (r *Repository) CommitStagedFiles() error {
 	return nil
 }
 
-func diff(workingDir []string, storedDir []string) []string {
-	var difference []string
-	for _, w1 := range workingDir {
-		if !slices.Contains(storedDir, w1) {
-			difference = append(difference, w1)
-		}
-	}
-
-	return difference
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func editedFiles(path string) []string {
 
 	filesStored, err := os.ReadDir(path)
@@ -126,23 +113,17 @@ func editedFiles(path string) []string {
 		}
 	}
 
-	return diff(changedFiles, filesStoredNames)
+	return utils.Diff(changedFiles, filesStoredNames)
 }
 
-func stagedFiles() []string {
-	stageFiles, err := os.ReadDir(".vamoni/stage")
-	check(err)
-	var allStagedFiles []string
-	for _, s := range stageFiles {
-		allStagedFiles = append(allStagedFiles, s.Name())
-	}
-
-	return allStagedFiles
-}
-
-func stage(fileToStage string) {
+func (r *Repository) stage(fileToStage string) {
 	allEditedFiles := editedFiles(".vamoni/change")
-	allStagedFiles := stagedFiles()
+	stagedFilePath := filepath.Join(r.basePath, stageDir)
+	allStagedFiles, err := utils.GetFilesInPath(stagedFilePath)
+
+	if err != nil {
+		fmt.Println("err")
+	}
 
 	// only files that are edited can be staged
 	if slices.Contains(allEditedFiles, fileToStage) && !slices.Contains(allStagedFiles, fileToStage) {
@@ -150,7 +131,10 @@ func stage(fileToStage string) {
 		utils.Copyfile(fileToStage, ".vamoni/stage/"+fileToStage)
 	}
 
-	newlyStagedFiles := stagedFiles()
+	newlyStagedFiles, err := utils.GetFilesInPath(stagedFilePath)
+	if err != nil {
+		fmt.Println("err")
+	}
 	fmt.Println("Currently Staged Files", newlyStagedFiles)
 	fmt.Println("files that can be staged", allEditedFiles)
 }
@@ -174,7 +158,7 @@ func main() {
 		repo.detectChangedFiles()
 	case "stage":
 		args2 := os.Args[2]
-		stage(args2)
+		repo.stage(args2)
 	case "commit":
 		repo.CommitStagedFiles()
 	default:
