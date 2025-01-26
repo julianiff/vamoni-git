@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io"
+	"julianiff/vamoni-git/utils"
 	"log"
 	"os"
 	"path/filepath"
@@ -74,7 +74,7 @@ func (r *Repository) CommitStagedFiles() error {
 
 	changedPath := filepath.Join(r.basePath, changeDir)
 	for _, f := range allStagedFiles {
-		err := copyfile(f, changedPath+f)
+		err := utils.Copyfile(f, changedPath+f)
 		if err != nil {
 			return fmt.Errorf("error while copying")
 		}
@@ -82,28 +82,6 @@ func (r *Repository) CommitStagedFiles() error {
 	}
 
 	fmt.Println("New files added to changeset", allStagedFiles)
-
-	return nil
-}
-
-func copyfile(sourceFile string, destinationFile string) error {
-
-	source, err := os.Open(sourceFile)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	destination, err := os.Create(destinationFile)
-	if err != nil {
-		return err
-	}
-
-	defer destination.Close()
-	_, err = io.Copy(destination, source)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -169,7 +147,7 @@ func stage(fileToStage string) {
 	// only files that are edited can be staged
 	if slices.Contains(allEditedFiles, fileToStage) && !slices.Contains(allStagedFiles, fileToStage) {
 		fmt.Println("file can be staged", fileToStage)
-		copyfile(fileToStage, ".vamoni/stage/"+fileToStage)
+		utils.Copyfile(fileToStage, ".vamoni/stage/"+fileToStage)
 	}
 
 	newlyStagedFiles := stagedFiles()
