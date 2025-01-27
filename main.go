@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	repository "julianiff/vamoni-git/internal"
+	"log"
 	"os"
 )
 
@@ -20,14 +21,22 @@ func main() {
 	case "init":
 		repo.Init()
 	case "status":
-		repo.Status()
+		err := repo.Status()
+		if err != nil {
+			fmt.Printf("could not call status %v", err)
+		}
 	case "detect":
-		repo.DetectChangedFiles()
+		_, err := repo.DetectChangedFiles()
+		if err != nil {
+			fmt.Printf("Could not detect %v", err)
+		}
 	case "stage":
 		args2 := os.Args[2]
 		repo.Stage(args2)
 	case "commit":
-		repo.CommitStagedFiles()
+		if err := repo.CommitStagedFiles(); err != nil {
+			log.Fatalf("Failed to commit")
+		}
 	default:
 		fmt.Println("No valid method names provided")
 		os.Exit(1)
