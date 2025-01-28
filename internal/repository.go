@@ -107,14 +107,18 @@ func (r *Repository) CommitStagedFiles(message string) error {
 
 	defer file.Close()
 
-	if _, err2 := file.WriteString(newCommitHash[:24] + " parenthash " + message + "\n"); err2 != nil {
+	commitHasPath := newCommitHash[:24]
+	if _, err2 := file.WriteString(commitHasPath + " parenthash " + message + "\n"); err2 != nil {
 		fmt.Println(err2)
 		return err2
 	}
 
 	changedPath := filepath.Join(r.basePath, changeDir)
 	for _, f := range allStagedFiles {
-		err := utils.Copyfile(f, changedPath+"/"+newCommitHash[:24]+f)
+		if err := os.MkdirAll(changedPath+"/"+commitHasPath, os.ModePerm); err != nil {
+			log.Fatal(err)
+		}
+		err := utils.Copyfile(f, changedPath+"/"+commitHasPath+"/"+f)
 		if err != nil {
 			return fmt.Errorf("error while copying")
 		}
