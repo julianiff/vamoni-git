@@ -34,7 +34,7 @@ func main() {
 		args2 := os.Args[2]
 		repo.Stage(args2)
 	case "commit":
-		if err := repo.CommitStagedFiles(); err != nil {
+		if err := repo.CommitStagedFiles(os.Args[2]); err != nil {
 			log.Fatalf("Failed to commit")
 		}
 	default:

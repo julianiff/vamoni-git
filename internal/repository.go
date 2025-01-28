@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/base64"
 	"fmt"
 	"julianiff/vamoni-git/utils"
 	"log"
@@ -39,6 +40,10 @@ func (r *Repository) Init() {
 		}
 	}
 
+	if err := os.WriteFile(filepath.Join(r.basePath, "index"), []byte("000000000"+"\n"), permission); err != nil {
+		log.Fatal((err))
+	}
+
 	fmt.Println("Initialized the vamoni repository")
 }
 
@@ -58,34 +63,65 @@ func (r *Repository) Status() error {
 	if err != nil {
 		return fmt.Errorf("failed to get staged files")
 	}
-	fmt.Printf("Changed files: %v\n", changedFiles)
+	fmt.Printf("Files with changes: %v\n", changedFiles)
 	fmt.Printf("Staged files: %v\n", allStagedFiles)
 
 	return nil
 }
 
-func (r *Repository) CommitStagedFiles() error {
+func encodeFilePathsContent(filePaths []string) (string, error) {
+	var fileBytes []byte
+	for _, s := range filePaths {
+		bytes, _ := os.ReadFile(s)
+		dst := base64.StdEncoding.EncodeToString(bytes)
+		fileBytes = append(fileBytes, dst...)
+	}
+
+	combined := make([]byte, base64.StdEncoding.EncodedLen(len(fileBytes)))
+	base64.StdEncoding.Encode(combined, fileBytes)
+
+	return string(combined), nil
+}
+
+func (r *Repository) CommitStagedFiles(message string) error {
 
 	stagePath := filepath.Join(r.basePath, stageDir)
 	stageFiles, err := os.ReadDir(stagePath)
 	if err != nil {
 		return fmt.Errorf("filed to read stagedFiles")
 	}
+
 	var allStagedFiles []string
 	for _, s := range stageFiles {
 		allStagedFiles = append(allStagedFiles, s.Name())
 	}
 
+	// here we have the files that we want to commit
+	newCommitHash, _ := encodeFilePathsContent(allStagedFiles)
+	file, err := os.OpenFile(filepath.Join(r.basePath, "index"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		fmt.Println("Could not open example.txt")
+		return err
+	}
+
+	defer file.Close()
+
+	if _, err2 := file.WriteString(newCommitHash[:24] + " parenthash " + message + "\n"); err2 != nil {
+		fmt.Println(err2)
+		return err2
+	}
+
 	changedPath := filepath.Join(r.basePath, changeDir)
 	for _, f := range allStagedFiles {
-		err := utils.Copyfile(f, changedPath+f)
+		err := utils.Copyfile(f, changedPath+"/"+newCommitHash[:24]+f)
 		if err != nil {
 			return fmt.Errorf("error while copying")
 		}
 		os.Remove(stagePath + f)
 	}
 
-	fmt.Println("New files added to changeset", allStagedFiles)
+	fmt.Println("Files commited", allStagedFiles)
 
 	return nil
 }
